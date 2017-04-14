@@ -22,6 +22,8 @@ import com.interfaces.ChunkServerInterface;
  *
  */
 
+//Woonghee's Data is pushed!
+
 public class ChunkServer implements ChunkServerInterface {
 	final static String filePath = "csci485/";	//or C:\\newfile.txt
 	public final static String ClientConfigFile = "ClientConfig.txt";
