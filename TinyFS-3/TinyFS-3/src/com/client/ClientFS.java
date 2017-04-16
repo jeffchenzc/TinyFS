@@ -1,6 +1,10 @@
 package com.client;
 
+import com.chunkserver.*;
+
 public class ClientFS {
+	
+	Master mas = new Master();
 
 	public enum FSReturnVals {
 		DirExists, // Returned by CreateDir when directory exists
@@ -27,7 +31,9 @@ public class ClientFS {
 	 * "CSCI485"), CreateDir("/Shahram/CSCI485/", "Lecture1")
 	 */
 	public FSReturnVals CreateDir(String src, String dirname) {
-		return null;
+		FSReturnVals temp = mas.createDir(src, dirname);
+		System.out.println(temp.toString());
+		return temp;
 	}
 
 	/**
@@ -38,7 +44,9 @@ public class ClientFS {
 	 * Example usage: DeleteDir("/Shahram/CSCI485/", "Lecture1")
 	 */
 	public FSReturnVals DeleteDir(String src, String dirname) {
-		return null;
+		FSReturnVals v = mas.deleteDir(src, dirname);
+		System.out.println("delete: " + v.toString());
+		return v;
 	}
 
 	/**
@@ -50,7 +58,7 @@ public class ClientFS {
 	 * "/Shahram/CSCI485" to "/Shahram/CSCI550"
 	 */
 	public FSReturnVals RenameDir(String src, String NewName) {
-		return null;
+		return mas.renameDir(src, NewName);
 	}
 
 	/**
@@ -61,7 +69,7 @@ public class ClientFS {
 	 * Example usage: ListDir("/Shahram/CSCI485")
 	 */
 	public String[] ListDir(String tgt) {
-		return null;
+		return mas.listDir(tgt);
 	}
 
 	/**

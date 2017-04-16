@@ -90,8 +90,10 @@ public class UnitTest2 {
 		if (arr == null || arr.length == 0) {
 			return false;
 		}
-		for (int i=0; i < arr.length; i++)
+		for (int i=0; i < arr.length; i++) {
+			System.out.println(arr[i]);
 			if (arr[i].equals(token)) return true;
+		}
 		return false;
 	}
 
