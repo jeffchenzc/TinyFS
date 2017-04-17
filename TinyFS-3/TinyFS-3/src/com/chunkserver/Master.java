@@ -10,6 +10,8 @@ import java.util.LinkedList;
 
 public class Master {
    
+	private static boolean DEBUG_RENAME = false;
+	
 	Map<String, LinkedList<String> > path = new HashMap<String, LinkedList<String> >();
 	Map<String, FileHandle> file = new HashMap<String, FileHandle>();
 	
@@ -27,10 +29,14 @@ public class Master {
 		String[] splitstr = path.split("/");
 		String parentdir = "";
 
+		if (DEBUG_RENAME) System.out.println(">\tGetDirSubdir:");
 		for (int i = 0; i < splitstr.length - 1; i++) {
+			if (splitstr[i].equals("")) continue;
 			parentdir += "/" + splitstr[i];
+			if (DEBUG_RENAME) System.out.println(">\t" + splitstr[i]);
 		}
 		parentdir += "/";
+		if (DEBUG_RENAME) System.out.println(">\t" + parentdir);
 		
 		dir[0] = parentdir;
 		dir[1] = splitstr[splitstr.length - 1];
@@ -67,29 +73,56 @@ public class Master {
 		return FSReturnVals.SrcDirNotExistent;
 	}
 	
+	/*
+	 * find original dir (eg "/a/b/c")
+	 * rename original and copy over children.
+	 * rename each child (full child key, full original, full rename)
+	 */
 	public FSReturnVals renameDir(String original, String rename){
-		//find original.
-		//rename original and copy over children.
-		//rename each child (full child key, full original, full rename)
-		
 		
 		String[] splitOriginal = getDirSubdir(original);
 		String parentDir = splitOriginal[0];
 		String renameThisDir = splitOriginal[1];
 		String renameToThis = getDirSubdir(rename)[1];
+		LinkedList<String> children, parent;
+		
+		if (DEBUG_RENAME) System.out.println("rename " + original + " to " + rename);
 		
 		if(path.containsKey(parentDir)){
-			if(path.get(parentDir).indexOf(renameThisDir) != -1){
+			parent = path.get(parentDir);
+			if(parent.indexOf(renameToThis) != -1){
+				if (DEBUG_RENAME) System.out.println("rename to: " + rename);
 				return FSReturnVals.DestDirExists;
 			}
-			path.get(parentDir).remove(renameThisDir);
-			path.get(parentDir).add(renameToThis);
-			//rename all the children directories
+			
+			recurRenameChild(getDirKey(original,""), original, rename);
 			
 			return FSReturnVals.Success;
 		}
 		
+		if (DEBUG_RENAME) System.out.println("rename failed to find file:" + parentDir);
 		return FSReturnVals.SrcDirNotExistent;
+	}
+	
+	/* 
+	 * rename the given parentDirPath by replacing the "oldName" substring to "newName"
+	 * and call recurRename on all of the parentDirPath's children.
+	 */
+	public void recurRenameChild(String parentDirPath, String oldDirPath, String newDirPath){
+		LinkedList<String> children;
+		String renamedParent, childToRename;
+		
+		if (DEBUG_RENAME) System.out.println("rename children of: " + parentDirPath);
+		children = path.get(parentDirPath);
+		renamedParent = parentDirPath.replaceFirst(oldDirPath, newDirPath);
+		path.put(renamedParent, children);
+		
+		for (int i = 0; i < children.size(); i++) {
+			childToRename = getDirKey(parentDirPath, children.get(i).toString());
+			recurRenameChild(childToRename, oldDirPath, newDirPath);
+		}
+		
+		path.remove(parentDirPath);
 	}
 	
 	public String[] listDir(String target){ 
@@ -98,39 +131,6 @@ public class Master {
 			return new String[0];
 		}
 		return recurList(target);
-	}
-	
-	public void recurRename(String parent, String oldName, String newSubdirName){
-		//follow all children of the given parent dir and rename "oldName" to "newName"
-		LinkedList children = path.get(parent);
-		for (int i = 0; i < children.size(); i++) {
-			rename(children.get(i).toString(), oldName, newSubdirName);
-			path.put(key, value);
-			recurRename(children.get(i).toString(), oldName, newSubdirName);
-		}
-		//remove all the old children
-		
-	}
-	
-	/* 
-	 * search dir to replace the first instance of oldName with newName
-	 * in event of failure, return original dir
-	 */
-	private String rename(String dir, String oldName, String newName){
-		String preStr = "";
-		String postStr = "";
-		boolean post = false;
-		String[] splitDir = dir.split("/");
-		for (int i = 0; i < splitDir.length; i++) {
-			if (splitDir[i].equals(oldName)) 
-				post = true;
-			if (post) {
-				postStr += "/" + splitDir[i];
-			}
-			preStr += "/" + splitDir[i];
-		}
-		if (!post) { return dir; }
-		return preStr + "/" + newName + postStr + "/";
 	}
 	
 	//recursive, key has no "/" at the end
