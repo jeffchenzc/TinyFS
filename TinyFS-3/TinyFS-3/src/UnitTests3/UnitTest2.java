@@ -13,6 +13,9 @@ import com.client.ClientFS.FSReturnVals;
  */
 public class UnitTest2 {
 	
+	private static final boolean DEBUG = true;
+	private static final boolean DEBUG_DETAIL = false;
+	
 	static final String TestName = "Unit Test 2: ";
 
 	public static void main(String[] args) {
@@ -31,6 +34,7 @@ public class UnitTest2 {
 		
 		boolean isExist = isDirExist(ret1, "/" + dir1+"/"+N);
 		if(isExist == true){
+			if (DEBUG) System.out.println("1");
 			System.out.println("Unit test 2 result: fail!");
     		return;
 		}
@@ -55,6 +59,7 @@ public class UnitTest2 {
 		if(fsrv == FSReturnVals.DirNotEmpty){
 			System.out.println("Good! Detected " + dir1 + " exists.");
 		} else {
+			if (DEBUG) System.out.println("2");
 			System.out.println("Unit test 2 result: fail!");
     		return;
 		}
@@ -64,6 +69,7 @@ public class UnitTest2 {
 		if(fsrv == FSReturnVals.DirNotEmpty){
 			System.out.println("Good!  Detected /" + dir2 + "/1/2 exists.");
 		} else {
+			if (DEBUG) System.out.println("3");
 			System.out.println("Unit test 2 result: fail!");
     		return;
 		}
@@ -72,6 +78,7 @@ public class UnitTest2 {
 		for(int i = 1; i < N; i++){
 			fsrv = cfs.RenameDir("/" + dir1 + "/" + i, "/" + dir1 + "/" + i + "i");
 			if( fsrv != FSReturnVals.Success){
+				if (DEBUG) System.out.println("4");
 				System.out.println("Unit test 2 result: fail!");
 	    		return;
 			}
@@ -80,6 +87,7 @@ public class UnitTest2 {
 		System.out.println(TestName + "RenameDir(\"/Ghandeharizadeh\", \"/ShahramGhandeharizadeh\")");
 		fsrv = cfs.RenameDir("/" + dir2, "/ShahramGhandeharizadeh");
 		if( fsrv != FSReturnVals.Success ){
+			if (DEBUG) System.out.println("5");
 			System.out.println("Unit test 2 result: fail!");
     		return;
 		}

@@ -14,6 +14,9 @@ import com.client.ClientFS.FSReturnVals;
  */
 public class UnitTest1 {
 	
+	public static final boolean DEBUG = true;
+	public static final boolean DEBUG_DETAIL = false;
+	
 	public static int N = 100;
 	static final String TestName = "Unit Test 1: ";
 	
@@ -26,7 +29,7 @@ public class UnitTest1 {
 		String dir1 = "Shahram";
 		FSReturnVals fsrv = cfs.CreateDir("/", dir1);
 		if ( fsrv != FSReturnVals.Success ){
-			System.out.println("0");
+			if (DEBUG) System.out.println("0");
 			System.out.println("Unit test 1 result: fail!");
     		return;
 		}
@@ -34,7 +37,7 @@ public class UnitTest1 {
 		for(int i = 1; i <= N; i++){
 			fsrv = cfs.CreateDir("/" + dir1 + "/", String.valueOf(i));
 			if( fsrv != FSReturnVals.Success ){
-				System.out.println("1");
+				if (DEBUG) System.out.println("1");
 				System.out.println("Unit test 1 result: fail!");
 	    		return;
 			}
@@ -43,12 +46,14 @@ public class UnitTest1 {
 		
 		String[] ret1 = cfs.ListDir("/" + dir1);
 		
-		System.out.println("gen2: " + Arrays.toString(gen1));
-		System.out.println("ret1: " + Arrays.toString(ret1));
+		if (DEBUG_DETAIL) {
+			System.out.println("gen2: " + Arrays.toString(gen1));
+			System.out.println("ret1: " + Arrays.toString(ret1));
+		}
 		
 		boolean compare1 = compareArrays(gen1, ret1);
 		if(compare1 == false){
-			System.out.println("1.5");
+			if (DEBUG) System.out.println("1.5");
 			System.out.println("Unit test 1 result: fail!");
     		return;
 		}
@@ -57,7 +62,7 @@ public class UnitTest1 {
 		String dir2 = "Ghandeharizadeh";
 		fsrv = cfs.CreateDir("/", dir2);
 		if( fsrv != FSReturnVals.Success ){
-			System.out.println("2");
+			if (DEBUG) System.out.println("2");
 			System.out.println("Unit test 1 result: fail!");
     		return;
 		}
@@ -66,7 +71,7 @@ public class UnitTest1 {
 		for(int i = 1; i <= N; i++){
 			fsrv = cfs.CreateDir(prev + "/", String.valueOf(i));
 			if( fsrv != FSReturnVals.Success ){
-				System.out.println("3");
+				if (DEBUG) System.out.println("3");
 				System.out.println("Unit test 1 result: fail!");
 	    		return;
 			}
@@ -76,13 +81,15 @@ public class UnitTest1 {
 		
 		ret1 = cfs.ListDir("/" + dir2);
 		
-		System.out.println("gen2: " + Arrays.toString(gen2));
-		System.out.println("ret1: " + Arrays.toString(ret1));
+		if (DEBUG_DETAIL) {
+			System.out.println("gen2: " + Arrays.toString(gen2));
+			System.out.println("ret1: " + Arrays.toString(ret1));
+		}
 		
 		compare1 = compareArrays(gen2, ret1);
 		
 		if(compare1 == false){
-			System.out.println("4");
+			if (DEBUG) System.out.println("4");
 			System.out.println("Unit test 1 result: fail!");
     		return;
 		}
