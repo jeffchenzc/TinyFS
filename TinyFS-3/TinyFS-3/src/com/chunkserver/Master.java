@@ -13,7 +13,7 @@ public class Master {
 	private static boolean DEBUG_RENAME = false;
 	
 	Map<String, LinkedList<String> > path = new HashMap<String, LinkedList<String> >();
-	Map<String, FileHandle> file = new HashMap<String, FileHandle>();
+	Map<String, LinkedList<FileHandle> > file = new HashMap<String, LinkedList<FileHandle> >();
 	
 	public Master(){
 		path.put("/", new LinkedList<String>());
@@ -164,6 +164,110 @@ public class Master {
 		}
 		
 		return returnedList;
+	}
+	
+	public FSReturnVals CreateFile (String tgtdir, String filename) {
+		FileHandle fh = null;
+		//add stuff to filehandle
+		
+		if (path.containsKey(tgtdir)){
+			//if tgtdir has files under it
+			if (file.containsKey(tgtdir)) {
+				fh = getFileHandle(filename, file.get(tgtdir)); 
+				if (fh != null) {
+					return FSReturnVals.FileExists;
+				}
+				fh = new FileHandle();
+				AddFHData(tgtdir, filename, fh);
+				file.get(tgtdir).add(fh);
+				return FSReturnVals.Success;
+			}
+			fh = new FileHandle();
+			file.put(tgtdir, new LinkedList<FileHandle>());
+			AddFHData(tgtdir, filename, fh);
+			file.get(tgtdir).add(fh);
+			return FSReturnVals.Success;
+		}
+		return FSReturnVals.SrcDirNotExistent;
+	}
+	
+	private void AddFHData (String tgtdir, String filename, FileHandle fh) {
+		fh.setFilename(filename);
+		fh.setFiledir(tgtdir);
+	}
+	
+	public FSReturnVals DeleteFile (String tgtdir, String filename) {
+		FileHandle fh;
+		
+		if (path.containsKey(tgtdir)){
+			//if tgtdir has files under it
+			if (file.containsKey(tgtdir)) {
+				fh = getFileHandle(filename, file.get(tgtdir)); 
+				if (fh != null) {
+					file.get(tgtdir).remove(fh);
+					return FSReturnVals.Success;
+				}
+			}
+			return FSReturnVals.FileDoesNotExist;
+		}
+		return FSReturnVals.SrcDirNotExistent;
+	}
+	
+	public FSReturnVals OpenFile (String filepath, FileHandle ofh) {
+		FileHandle fh;
+		String[] parsefp = getDirSubdir(filepath);
+		String tgtdir = parsefp[0];
+		String filename = parsefp[1];
+		
+		if (path.containsKey(tgtdir)){
+			//if tgtdir has files under it
+			if (file.containsKey(tgtdir)) {
+				fh = getFileHandle(filename, file.get(tgtdir)); 
+				if (fh != null) {
+					//populate the filehandle ofh
+					ofh = fh;
+					return FSReturnVals.Success;
+				}
+			}
+			return FSReturnVals.FileDoesNotExist;
+		}
+		return FSReturnVals.SrcDirNotExistent;
+	}
+	
+	public FSReturnVals CloseFile (FileHandle cfh) {
+		FileHandle fh;
+		//String[] parsefp = getDirSubdir(cfh.getFilepath()); /*TODO FileHandle.filepath*/
+		String tgtdir = cfh.getFiledir();
+		String filename = cfh.getFilename();
+		
+		if (path.containsKey(tgtdir)){
+			//if tgtdir has files under it
+			if (file.containsKey(tgtdir)) {
+				fh = getFileHandle(filename, file.get(tgtdir)); 
+				if (fh != null)
+					
+					return FSReturnVals.Success;	/*TODO: close the filehandle cfh*/
+			}
+			return FSReturnVals.BadHandle;
+		}
+		
+		//cfh is invalid
+		return FSReturnVals.BadHandle;
+	}
+	
+	/*
+	 * Linearly searches the linkedList for a FileHandle whos filename
+	 * matches the String file. Returns null if no match match, else
+	 * returns the FileHandle.
+	 */
+	private FileHandle getFileHandle(String file, LinkedList<FileHandle> linkedList) {
+		FileHandle fh = null;
+		for (int i = 0; i < linkedList.size(); i++) {
+			fh = linkedList.get(i);
+			//System.out.println(">\t[" + i + "] " + fh.getFilepath());
+			if (fh.getFilename().equals(file)) return fh; /*TODO FileHandle.filename*/
+		}
+		return null;
 	}
 	
 	public static void main(String[] args){

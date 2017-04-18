@@ -4,6 +4,8 @@ import com.chunkserver.*;
 
 public class ClientFS {
 	
+	private static final boolean DEBUG_DETAIL = true;
+	
 	Master mas = new Master();
 
 	public enum FSReturnVals {
@@ -32,7 +34,7 @@ public class ClientFS {
 	 */
 	public FSReturnVals CreateDir(String src, String dirname) {
 		FSReturnVals temp = mas.createDir(src, dirname);
-		System.out.println(temp.toString());
+		if (DEBUG_DETAIL) System.out.println(temp.toString());
 		return temp;
 	}
 
@@ -45,7 +47,7 @@ public class ClientFS {
 	 */
 	public FSReturnVals DeleteDir(String src, String dirname) {
 		FSReturnVals v = mas.deleteDir(src, dirname);
-		System.out.println("delete: " + v.toString());
+		if (DEBUG_DETAIL) System.out.println("delete: " + v.toString());
 		return v;
 	}
 
@@ -58,7 +60,9 @@ public class ClientFS {
 	 * "/Shahram/CSCI485" to "/Shahram/CSCI550"
 	 */
 	public FSReturnVals RenameDir(String src, String NewName) {
-		return mas.renameDir(src, NewName);
+		FSReturnVals v = mas.renameDir(src, NewName);
+		if (DEBUG_DETAIL) System.out.println("rename returns: " + v.toString());
+		return v;
 	}
 
 	/**
@@ -80,7 +84,9 @@ public class ClientFS {
 	 * Example usage: Createfile("/Shahram/CSCI485/Lecture1/", "Intro.pptx")
 	 */
 	public FSReturnVals CreateFile(String tgtdir, String filename) {
-		return null;
+		FSReturnVals v = mas.CreateFile(tgtdir, filename);
+		if (DEBUG_DETAIL) System.out.println("createfile " + tgtdir + filename + " returns: " + v.toString());
+		return v;
 	}
 
 	/**
@@ -91,7 +97,9 @@ public class ClientFS {
 	 * Example usage: DeleteFile("/Shahram/CSCI485/Lecture1/", "Intro.pptx")
 	 */
 	public FSReturnVals DeleteFile(String tgtdir, String filename) {
-		return null;
+		FSReturnVals v = mas.DeleteFile(tgtdir, filename);
+		if (DEBUG_DETAIL) System.out.println("deletefile returns: " + v.toString());
+		return v;
 	}
 
 	/**
@@ -102,7 +110,9 @@ public class ClientFS {
 	 * Example usage: OpenFile("/Shahram/CSCI485/Lecture1/Intro.pptx", FH1)
 	 */
 	public FSReturnVals OpenFile(String FilePath, FileHandle ofh) {
-		return null;
+		FSReturnVals v = mas.OpenFile(FilePath, ofh);
+		if (DEBUG_DETAIL) System.out.println("openfile returns: " + v.toString());
+		return v;
 	}
 
 	/**
@@ -111,7 +121,9 @@ public class ClientFS {
 	 * Example usage: CloseFile(FH1)
 	 */
 	public FSReturnVals CloseFile(FileHandle ofh) {
-		return null;
+		FSReturnVals v = mas.CloseFile(ofh);
+		if (DEBUG_DETAIL) System.out.println("closefile returns: " + v.toString());
+		return v;
 	}
 
 }
