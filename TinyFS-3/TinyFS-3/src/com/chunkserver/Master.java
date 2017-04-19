@@ -194,6 +194,8 @@ public class Master {
 	private void AddFHData (String tgtdir, String filename, FileHandle fh) {
 		fh.setFilename(filename);
 		fh.setFiledir(tgtdir);
+		fh.setFilepath(tgtdir+filename);
+		fh.setOpen(false);
 	}
 	
 	public FSReturnVals DeleteFile (String tgtdir, String filename) {
@@ -225,7 +227,11 @@ public class Master {
 				fh = getFileHandle(filename, file.get(tgtdir)); 
 				if (fh != null) {
 					//populate the filehandle ofh
-					ofh = fh;
+					ofh.setFiledir(tgtdir);
+					ofh.setFilename(filename);
+					ofh.setFilepath(tgtdir+filename);
+					ofh.setOpen(true);
+					//ofh = fh;
 					return FSReturnVals.Success;
 				}
 			}
@@ -245,7 +251,8 @@ public class Master {
 			if (file.containsKey(tgtdir)) {
 				fh = getFileHandle(filename, file.get(tgtdir)); 
 				if (fh != null)
-					
+					fh.setOpen(false);
+					cfh = fh;
 					return FSReturnVals.Success;	/*TODO: close the filehandle cfh*/
 			}
 			return FSReturnVals.BadHandle;

@@ -98,7 +98,7 @@ public class ClientFS {
 	 */
 	public FSReturnVals DeleteFile(String tgtdir, String filename) {
 		FSReturnVals v = mas.DeleteFile(tgtdir, filename);
-		if (DEBUG_DETAIL) System.out.println("deletefile returns: " + v.toString());
+		if (DEBUG_DETAIL) System.out.println("deletefile " + tgtdir + filename + " returns: " + v.toString());
 		return v;
 	}
 
@@ -111,7 +111,7 @@ public class ClientFS {
 	 */
 	public FSReturnVals OpenFile(String FilePath, FileHandle ofh) {
 		FSReturnVals v = mas.OpenFile(FilePath, ofh);
-		if (DEBUG_DETAIL) System.out.println("openfile returns: " + v.toString());
+		if (DEBUG_DETAIL) System.out.println("openfile " + ofh.getFilepath() + " returns: " + v.toString());
 		return v;
 	}
 
@@ -122,7 +122,7 @@ public class ClientFS {
 	 */
 	public FSReturnVals CloseFile(FileHandle ofh) {
 		FSReturnVals v = mas.CloseFile(ofh);
-		if (DEBUG_DETAIL) System.out.println("closefile returns: " + v.toString());
+		if (DEBUG_DETAIL) System.out.println("closefile " + ofh.getFilepath() + " returns: " + v.toString());
 		return v;
 	}
 
