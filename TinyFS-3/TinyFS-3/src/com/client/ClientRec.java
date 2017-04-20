@@ -152,6 +152,7 @@ public class ClientRec {
 				int new_offset = current_offset * -1;
 				byte[] write = ByteBuffer.allocate(4).putInt(new_offset).array();
 				try {
+					current_index -= 4;
 					raf.seek(current_index);
 					raf.write(write, 0, 4);
 				} catch (IOException e) {
