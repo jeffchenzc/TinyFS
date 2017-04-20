@@ -11,7 +11,7 @@ public class ClientRec {
 	
 	static final boolean DEBUG_SEEK = false;
 	static final boolean DEBUG_DELETE = false;
-	static final int MAX_CHUNK_SIZE = 4096;
+	static final int MAX_CHUNK_SIZE = 1024 * 1024;
 	static final int RECORD_IS_DELETED = -2;
 
 	private FSReturnVals AppendRecordToNewChunk(FileHandle ofh, byte[] payload, RID RecordID) {
@@ -307,13 +307,13 @@ public class ClientRec {
 		if (DEBUG_SEEK) System.out.println(">\tREADLASTRECORD");
 		String last_chunk_name = null;
 		int max_pointer = max_pointer(ofh.chunks.getLast());
-		int i = ofh.chunks.size();
+		int i = ofh.chunks.size() - 1;
 		while(max_pointer == 0){
-			i--;
 			if(i < 0){
 				return FSReturnVals.BadHandle;
 			}
 			max_pointer = max_pointer(ofh.chunks.get(i));
+			i--;
 		}
 		if(max_pointer > 0){
 			last_chunk_name = ofh.chunks.get(i);
@@ -408,11 +408,7 @@ public class ClientRec {
 			}
 		} else {
 			status = readChunkData(pivot.chunkName, pivot.pointer_index, rec, true, ofh);
-			int pointer = pivot.pointer_index - 4;
-			while (status == RECORD_IS_DELETED) {
-				status = readChunkData(pivot.chunkName, pointer, rec, true, ofh);
-				pointer -= 4;
-			}
+			
 		}
 		
 		return (status == -1) ? FSReturnVals.Fail : FSReturnVals.Success;
@@ -427,7 +423,24 @@ public class ClientRec {
 	 * recn-1, tinyRec2) 3. ReadPrevRecord(FH1, recn-2, tinyRec3)
 	 */
 	public FSReturnVals ReadPrevRecord(FileHandle ofh, RID pivot, TinyRec rec){
-		int status = readChunkData(pivot.chunkName, pivot.pointer_index, rec, false, ofh);
+		//int status = readChunkData(pivot.chunkName, pivot.pointer_index, rec, false, ofh);
+		
+		int status = -1;
+		
+		String chunk = pivot.chunkName;
+		int max_pointer = max_pointer(chunk);
+		
+		if (pivot.pointer_index == MAX_CHUNK_SIZE-4) {
+			// read first item in next chunk
+			int next_chunk_index = ofh.chunks.indexOf(chunk) - 1;
+			if ((next_chunk_index >= 0)) {
+				String next_chunk = ofh.chunks.get(next_chunk_index);
+				int max_pointer_next = max_pointer(next_chunk);
+				status = readChunkData(next_chunk, MAX_CHUNK_SIZE - 4 * max_pointer_next -4, rec, false, ofh);
+			}
+		} else {
+			status = readChunkData(pivot.chunkName, pivot.pointer_index, rec, false, ofh);
+		}
 		
 		return (status == -1) ? FSReturnVals.Fail : FSReturnVals.Success;	
 	}
