@@ -1,7 +1,17 @@
 package com.chunkserver;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.BindException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Vector;
 import java.util.regex.Pattern;
 
 import com.client.FileHandle;
@@ -10,13 +20,55 @@ import java.util.LinkedList;
 
 public class Master {
    
+	private static boolean DEBUG_SERVER = false;
 	private static boolean DEBUG_RENAME = false;
+	private static boolean DEBUG_THREAD = true;
+	
+	private ServerSocket ss;
+	private Socket s;
+	private Vector<ChunkServerThread> threads;
+	private static int port = 8888;
+	private static int int_size = Integer.SIZE/Byte.SIZE;
 	
 	Map<String, LinkedList<String> > path = new HashMap<String, LinkedList<String> >();
 	Map<String, LinkedList<FileHandle> > file = new HashMap<String, LinkedList<FileHandle> >();
 	
+	public static final char CREATEDIR = '1';
+	public static final char DELETEDIR = '2';
+	public static final char RENAMEDIR = '3';
+	public static final char LISTDIR = '4';
+	public static final char CREATEFILE = '5';
+	public static final char DELETEFILE = '6';
+	public static final char OPENFILE = '7';
+	public static final char CLOSEFILE = '8';
+	
 	public Master(){
 		path.put("/", new LinkedList<String>());
+		
+		//start serversocket
+		threads = new Vector<ChunkServerThread>();
+		ss = null;
+		try {
+			ss = new ServerSocket(port);
+			if (DEBUG_SERVER) System.out.println("Successfully started server on localhost:" + port);
+			while (true) {
+				if (DEBUG_SERVER) System.out.println("Waiting for connections...");
+				s = ss.accept();
+				if (DEBUG_SERVER) System.out.println("Connection from " + s.getInetAddress());
+				ChunkServerThread cst = new ChunkServerThread(s, this);
+				threads.add(cst);
+			}
+		} catch (BindException be) {
+			if (DEBUG_SERVER) System.out.println("A server is already running on this port");
+		} catch (IOException ioe) {
+			if (DEBUG_SERVER) System.out.println("Exception while accepting connections on server");
+			ioe.printStackTrace();
+		} finally {
+			if (ss != null) {
+				try { ss.close(); }
+				catch (IOException ioe) { if (DEBUG_SERVER)System.out.println("Exception while closing server"); }
+			}
+		}
 	}
 	
 	private String getDirKey(String source, String subpath) {
@@ -127,7 +179,7 @@ public class Master {
 	
 	public String[] listDir(String target){ 
 		if(path.get(target+"/") == null){
-			System.out.println(target + "/ linked list is fucking null");
+			System.out.println("Cannot list dir: " + target + " linked list is fucking null");
 			return new String[0];
 		}
 		return recurList(target);
@@ -277,8 +329,130 @@ public class Master {
 		return null;
 	}
 	
-	public static void main(String[] args){
+	private class ChunkServerThread extends Thread{
+		private Master mas;
+		private Socket s;
+		private ObjectInputStream ois;
+		private ObjectOutputStream oos;
+		private DataInputStream dis;
+		private DataOutputStream dos;
 		
+		/**
+		 * @param s (Socket)
+		 * @param master (ChunkServer)
+		 */
+		public ChunkServerThread(Socket s, Master master) {
+			this.s = s;
+			this.mas = master;
+			try{
+				ois = new ObjectInputStream(s.getInputStream());
+				oos = new ObjectOutputStream(s.getOutputStream());
+				dis = new DataInputStream(ois);
+				dos = new DataOutputStream(oos);
+				this.start();
+			} catch (IOException ioe) {
+				if (DEBUG_THREAD) System.out.println("Error while creating thread");
+				ioe.printStackTrace();
+			}
+		}
+		
+		private String readStringFromClient(){
+			int length;
+			byte[] str;
+			String ans = "";
+			try {
+				length = dis.readInt(); //length of payload
+				if (DEBUG_SERVER) System.out.println("received len " + length);
+				str = new byte[length];
+				for (int i = 0; i < length; i++) {
+					str[i] = dis.readByte();
+				}
+				ans = new String(str, Charset.forName("UTF-8"));
+				if (DEBUG_SERVER) System.out.println("response: [" + length + ": " + ans + "]");
+			} catch (IOException ioe){
+				ioe.printStackTrace();
+			}
+			return ans;
+		}
+		
+		private void writeStringToClient(String payload) {
+			int payload_length;
+			byte[] payload_bytes = payload.getBytes(Charset.forName("UTF-8"));
+			
+			payload_length = payload_bytes.length;
+			
+			try{
+				dos.writeInt(payload_length);
+				dos.write(payload_bytes, 0, payload_length);
+				dos.flush();
+				dos.flush();
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+			}
+		}
+		
+		private void writeFSValsToClient(FSReturnVals v){
+			writeStringToClient(v.toString());
+		}
+		
+		public void run() {
+			FSReturnVals v;
+			int length;
+			if(ss == null || s == null) return;
+			char cmd = 0;
+			while (true) {
+				try {
+					cmd = dis.readChar();
+					switch(cmd){
+					case('1'): // CREATE DIR
+						String createdir_src = readStringFromClient();
+						String createdir_source = readStringFromClient();
+						v = mas.createDir(createdir_src, createdir_source);
+						writeFSValsToClient(v);
+						if (DEBUG_THREAD) System.out.println("CREATEDIR " + createdir_src + createdir_source);
+						break;
+					case('2'): // DELETE DIR
+						String deldir_src = readStringFromClient();
+						String deldir_source = readStringFromClient();
+						v = mas.createDir(deldir_src, deldir_source);
+						writeFSValsToClient(v);
+						if (DEBUG_THREAD) System.out.println("DELETEDIR " + deldir_src + deldir_source);
+						break;
+					case('3'): // RENAME DIR
+						String rename_tgt = readStringFromClient();
+						String rename_newname = readStringFromClient();
+						v = mas.renameDir(rename_tgt, rename_newname);
+						writeFSValsToClient(v);
+						if (DEBUG_THREAD) System.out.println("RENAMEDIR " + rename_tgt + rename_newname);
+					case('4'): // LIST DIR
+						String list_tgt = readStringFromClient();
+						String[] list_dirs = mas.listDir(list_tgt);
+						length = list_dirs.length;
+						dos.writeInt(length);
+						for (int listi = 0; listi < length; listi++){
+							writeStringToClient(list_dirs[listi]);
+						}
+						if (DEBUG_THREAD) System.out.println("LISTDIR " + list_tgt);
+						break;
+					default:
+						if (DEBUG_THREAD) System.out.println("received other request: [ " + cmd + " ]");
+						break;
+					} /*end switch(cmd)*/
+				} catch (IOException ioe) {
+					try {
+						dos.close(); dis.close(); 
+						if (DEBUG_THREAD) System.out.println("Closed dos/ios");
+					} catch (IOException ioe2) {
+						if (DEBUG_THREAD) System.out.println("error closing dos/ios in this thread");
+					}
+					break;
+				}
+			} /*endwhile*/
+		}
+	}
+	
+	public static void main(String[] args){
+		Master mas = new Master();
 	}
 
 }

@@ -1,10 +1,20 @@
 package com.client;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
+import java.nio.charset.Charset;
+
 import com.chunkserver.*;
 
 public class ClientFS {
 	
 	private static final boolean DEBUG_DETAIL = true;
+	private static final boolean DEBUG_MASTER_CNX = true;
 	
 	Master mas = new Master();
 
@@ -25,7 +35,78 @@ public class ClientFS {
 		
 		ReadToNextChunk
 	}
+	
+	private Socket master_s;
+	private ObjectOutputStream master_oos;
+	private ObjectInputStream master_ois;
+	private DataOutputStream master_dos;
+	private DataInputStream master_dis;
 
+	private static String host = "localhost";
+	private static int port = 8888;
+	private static int int_size = Integer.SIZE/Byte.SIZE;
+	
+	/**
+	 * Initialize the client
+	 */
+	public ClientFS(){
+		master_s = null;
+		System.out.println("Create ClientFS");
+		try {
+			master_s = new Socket(host, port);
+			master_oos = new ObjectOutputStream(master_s.getOutputStream());
+			master_ois = new ObjectInputStream(master_s.getInputStream());
+			master_dos = new DataOutputStream(master_oos);
+			master_dis = new DataInputStream(master_ois);
+		} catch (IOException ioe) {
+			System.out.println("Connection refused: " + host + ":" + port);
+			try {
+				if (master_s != null) master_s.close();
+			} catch (IOException ioe2) {
+				System.out.println("IOE when closing connection to " + host + ":" + port);
+			}
+		}
+	}
+
+	/**
+	 * @return String that was read in from Master
+	 * reads an int [length], then reads [length] number of bytes from Master's socket
+	 */
+	private String readStringFromMaster(){
+		int length;
+		byte[] str;
+		String ans = "";
+		try {
+			length = master_dis.readInt(); //length of payload
+			if (DEBUG_MASTER_CNX) System.out.println("received len " + length);
+			str = new byte[length];
+			for (int i = 0; i < length; i++) {
+				str[i] = master_dis.readByte();
+			}
+			ans = new String(str, Charset.forName("UTF-8"));
+			if (DEBUG_MASTER_CNX) System.out.println("response: [" + length + ": " + ans + "]");
+		} catch (IOException ioe){
+			ioe.printStackTrace();
+		}
+		return ans;
+	}
+	
+	private void writeStringToMaster(String payload) {
+		int payload_length;
+		byte[] payload_bytes = payload.getBytes(Charset.forName("UTF-8"));
+		
+		payload_length = payload_bytes.length;
+		
+		try{
+			master_dos.writeInt(payload_length);
+			master_dos.write(payload_bytes, 0, payload_length);
+			master_dos.flush();
+			master_oos.flush();
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+		}
+	}
+	
 	/**
 	 * Creates the specified dirname in the src directory Returns
 	 * SrcDirNotExistent if the src directory does not exist Returns
@@ -35,9 +116,30 @@ public class ClientFS {
 	 * "CSCI485"), CreateDir("/Shahram/CSCI485/", "Lecture1")
 	 */
 	public FSReturnVals CreateDir(String src, String dirname) {
+		int length;
+		byte[] str;
+		FSReturnVals v;
+		if (master_s == null) {
+			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to create dir " + src + dirname);
+			return null;
+		}
+		try{
+			master_dos.writeChar(Master.CREATEDIR);
+			master_dos.flush();
+			master_oos.flush();
+			if (DEBUG_MASTER_CNX) System.out.println("REQUEST: create dir " + src + dirname );
+			writeStringToMaster(src);
+			writeStringToMaster(dirname);
+			v = FSReturnVals.valueOf(readStringFromMaster());
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+			return null; //abort
+		}
+		
+		/*
 		FSReturnVals temp = mas.createDir(src, dirname);
-		if (DEBUG_DETAIL) System.out.println(temp.toString());
-		return temp;
+		if (DEBUG_DETAIL) System.out.println(temp.toString());*/
+		return v;
 	}
 
 	/**
@@ -48,8 +150,29 @@ public class ClientFS {
 	 * Example usage: DeleteDir("/Shahram/CSCI485/", "Lecture1")
 	 */
 	public FSReturnVals DeleteDir(String src, String dirname) {
-		FSReturnVals v = mas.deleteDir(src, dirname);
+		int length;
+		byte[] str;
+		FSReturnVals v;
+		if (master_s == null) {
+			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to create dir " + src + dirname);
+			return null;
+		}
+		try{
+			master_dos.writeChar(Master.CREATEDIR);
+			master_dos.flush();
+			master_oos.flush();
+			if (DEBUG_MASTER_CNX) System.out.println("REQUEST: delete dir " + src + dirname );
+			writeStringToMaster(src);
+			writeStringToMaster(dirname);
+			v = FSReturnVals.valueOf(readStringFromMaster());
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+			return null; //abort
+		}
+		
+		/*FSReturnVals v = mas.deleteDir(src, dirname);
 		if (DEBUG_DETAIL) System.out.println("delete: " + v.toString());
+		*/
 		return v;
 	}
 
@@ -62,8 +185,30 @@ public class ClientFS {
 	 * "/Shahram/CSCI485" to "/Shahram/CSCI550"
 	 */
 	public FSReturnVals RenameDir(String src, String NewName) {
+		int length;
+		byte[] str;
+		FSReturnVals v;
+		if (master_s == null) {
+			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to delete dir " + src + NewName);
+			return null;
+		}
+		try{
+			master_dos.writeChar(Master.DELETEDIR);
+			master_dos.flush();
+			master_oos.flush();
+			if (DEBUG_MASTER_CNX) System.out.println("REQUEST: delete dir " + src + NewName );
+			writeStringToMaster(src);
+			writeStringToMaster(NewName);
+			v = FSReturnVals.valueOf(readStringFromMaster());
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+			return null; //abort
+		}
+		
+		/*
 		FSReturnVals v = mas.renameDir(src, NewName);
 		if (DEBUG_DETAIL) System.out.println("rename returns: " + v.toString());
+		*/
 		return v;
 	}
 
@@ -75,7 +220,31 @@ public class ClientFS {
 	 * Example usage: ListDir("/Shahram/CSCI485")
 	 */
 	public String[] ListDir(String tgt) {
-		return mas.listDir(tgt);
+		int dirs_length;
+		byte[] str;
+		String[] dirs;
+		if (master_s == null) {
+			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to list dir " + tgt);
+			return null;
+		}
+		try{
+			master_dos.writeChar(Master.LISTDIR);
+			master_dos.flush();
+			master_oos.flush();
+			if (DEBUG_MASTER_CNX) System.out.println("REQUEST: list dir " + tgt );
+			writeStringToMaster(tgt);
+			dirs_length = master_dis.readInt();
+			dirs = new String[dirs_length];
+			for (int i = 0; i < dirs_length; i++) {
+				dirs[i] = readStringFromMaster();
+			}
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+			return null; //abort
+		}
+		
+		/*return mas.listDir(tgt);*/
+		return dirs;
 	}
 
 	/**

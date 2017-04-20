@@ -1,8 +1,13 @@
 package com.client;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
+import java.net.Socket;
 import java.nio.ByteBuffer;
 
 import com.client.ClientFS.FSReturnVals;
@@ -11,8 +16,43 @@ public class ClientRec {
 	
 	static final boolean DEBUG_SEEK = false;
 	static final boolean DEBUG_DELETE = false;
+	static final boolean DEBUG_SOCKET = true;
 	static final int MAX_CHUNK_SIZE = 1024 * 1024;
 	static final int RECORD_IS_DELETED = -2;
+	
+	private Socket s;
+	private ObjectOutputStream oos;
+	private ObjectInputStream ois;
+	private DataOutputStream dos;
+	private DataInputStream dis;
+
+	private static String host = "localhost";
+	private static int port = 8888;
+	private static int int_size = Integer.SIZE/Byte.SIZE;
+	
+	/**
+	 * Initialize the client
+	 */
+	public ClientRec(){
+		s = null;
+		try {
+			s = new Socket(host, port);
+			oos = new ObjectOutputStream(s.getOutputStream());
+			ois = new ObjectInputStream(s.getInputStream());
+			dos = new DataOutputStream(oos);
+			dis = new DataInputStream(ois);
+		} catch (IOException ioe) {
+			System.out.println("Connection refused: " + host + ":" + port);
+			try {
+				if (s != null) s.close();
+			} catch (IOException ioe2) {
+				System.out.println("IOE when closing connection to " + host + ":" + port);
+			}
+		}
+	}
+	
+	//
+	
 
 	private FSReturnVals AppendRecordToNewChunk(FileHandle ofh, byte[] payload, RID RecordID) {
 		if (DEBUG_SEEK) System.out.println(">\t Append to new chunk");
