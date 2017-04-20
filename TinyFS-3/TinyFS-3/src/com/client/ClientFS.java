@@ -21,7 +21,9 @@ public class ClientFS {
 		RecDoesNotExist, // The specified record does not exist, used by DeleteRecord
 		NotImplemented, // Specific to CSCI 485 and its unit tests
 		Success, //Returned when a method succeeds
-		Fail //Returned when a method fails
+		Fail, //Returned when a method fails
+		
+		ReadToNextChunk
 	}
 
 	/**

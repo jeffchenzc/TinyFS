@@ -17,7 +17,7 @@ import com.client.TinyRec;
  */
 public class UnitTest4 {
 	
-	public static final boolean DEBUG = true;
+	public static final boolean DEBUG = false;
 	public static int NumRecs = 1000;
 	static final String TestName = "Unit Test 4: ";
 	
@@ -51,7 +51,6 @@ public class UnitTest4 {
 			}
 			RID rid = new RID();
 			crec.AppendRecord(fh, payload, rid);
-			System.out.println("appended to record " + i);
 		}
 		fsrv = cfs.CloseFile(fh);
 		
@@ -63,9 +62,9 @@ public class UnitTest4 {
 		int cntr = 1;
 		ArrayList<RID> vect = new ArrayList<RID>();
 		while (r1.getRID() != null){
-			if (DEBUG) System.out.println(">\tcntr");
+			if (DEBUG) System.out.println(">\tcntr" + cntr);
 			TinyRec r2 = new TinyRec();
-			FSReturnVals retval = crec.ReadNextRecord(fh, r1.getRID(), r2);
+			FSReturnVals retval = crec.ReadNextRecord(fh, r1.getRID(), r2, cntr);
 			//if(retval != FSReturnVals.Success){
 			if(r2.getRID() != null){
 				byte[] head = new byte[4];
@@ -106,9 +105,10 @@ public class UnitTest4 {
 		ofd = cfs.OpenFile("/" + dir1 + "/emp", fh);
 		r1 = new TinyRec();
 		retRR = crec.ReadFirstRecord(fh, r1);
+		int i = 0; /*DELETE THIS LATER***/
 		while (r1.getRID() != null){
 			TinyRec r2 = new TinyRec();
-			FSReturnVals retval = crec.ReadNextRecord(fh, r1.getRID(), r2);
+			FSReturnVals retval = crec.ReadNextRecord(fh, r1.getRID(), r2, i); i++; /*DELETETHIS LATER*/
 			if(r2.getRID() != null){
 				byte[] head = new byte[4];
 				System.arraycopy(r2.getPayload(), 0, head, 0, 4);
