@@ -435,6 +435,11 @@ public class Master {
 						if (DEBUG_THREAD) System.out.println("LISTDIR " + list_tgt);
 						break;
 					case('5'): // CREATE FILE
+						String createfile_tgtdir = readStringFromClient();
+						String createfile_filename = readStringFromClient();
+						v = mas.renameDir(createfile_tgtdir, createfile_filename);
+						writeFSValsToClient(v);
+						if (DEBUG_THREAD) System.out.println("CREATEFILE " + createfile_tgtdir + createfile_filename);
 					case('6'): // DELETE FILE
 					case('7'): // OPEN FILE
 					case('8'): // CLOSE FILE

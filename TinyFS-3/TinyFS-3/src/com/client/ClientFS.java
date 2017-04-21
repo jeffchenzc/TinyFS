@@ -325,8 +325,30 @@ public class ClientFS {
 	 * Example usage: OpenFile("/Shahram/CSCI485/Lecture1/Intro.pptx", FH1)
 	 */
 	public FSReturnVals OpenFile(String FilePath, FileHandle ofh) {
+		int length;
+		byte[] str;
+		FSReturnVals v;
+		if (master_s == null) {
+			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to open file " + FilePath + ofh.identifier);
+			return null;
+		}
+		try{
+			master_dos.writeChar(Master.OPENFILE);
+			master_dos.flush();
+			master_oos.flush();
+			if (DEBUG_MASTER_CNX) System.out.println("REQUEST: del dir " + FilePath + ofh.identifier);
+			writeStringToMaster(FilePath);
+			writeStringToMaster(ofh.identifier);
+			v = FSReturnVals.valueOf(readStringFromMaster());
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+			return null; //abort
+		}
+		
+		/*
 		FSReturnVals v = mas.OpenFile(FilePath, ofh);
 		if (DEBUG_DETAIL) System.out.println("openfile " + ofh.getFilepath() + " returns: " + v.toString());
+		*/
 		return v;
 	}
 
@@ -336,8 +358,29 @@ public class ClientFS {
 	 * Example usage: CloseFile(FH1)
 	 */
 	public FSReturnVals CloseFile(FileHandle ofh) {
+		int length;
+		byte[] str;
+		FSReturnVals v;
+		if (master_s == null) {
+			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to close file " + ofh.identifier);
+			return null;
+		}
+		try{
+			master_dos.writeChar(Master.CREATEDIR);
+			master_dos.flush();
+			master_oos.flush();
+			if (DEBUG_MASTER_CNX) System.out.println("REQUEST: close file" + ofh.identifier);
+			writeStringToMaster(ofh.identifier);
+			v = FSReturnVals.valueOf(readStringFromMaster());
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+			return null; //abort
+		}
+		
+		/*
 		FSReturnVals v = mas.CloseFile(ofh);
 		if (DEBUG_DETAIL) System.out.println("closefile " + ofh.getFilepath() + " returns: " + v.toString());
+		*/
 		return v;
 	}
 
