@@ -13,8 +13,8 @@ import com.chunkserver.*;
 
 public class ClientFS {
 	
-	private static final boolean DEBUG_DETAIL = true;
-	private static final boolean DEBUG_MASTER_CNX = true;
+	private static final boolean DEBUG_DETAIL = false;
+	private static final boolean DEBUG_MASTER_CNX = false;
 	
 	Master mas = new Master();
 
@@ -116,8 +116,6 @@ public class ClientFS {
 	 * "CSCI485"), CreateDir("/Shahram/CSCI485/", "Lecture1")
 	 */
 	public FSReturnVals CreateDir(String src, String dirname) {
-		int length;
-		byte[] str;
 		FSReturnVals v;
 		if (master_s == null) {
 			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to create dir " + src + dirname);
@@ -150,20 +148,19 @@ public class ClientFS {
 	 * Example usage: DeleteDir("/Shahram/CSCI485/", "Lecture1")
 	 */
 	public FSReturnVals DeleteDir(String src, String dirname) {
-		int length;
-		byte[] str;
 		FSReturnVals v;
 		if (master_s == null) {
-			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to create dir " + src + dirname);
+			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to delete dir " + src + dirname);
 			return null;
 		}
 		try{
-			master_dos.writeChar(Master.CREATEDIR);
+			master_dos.writeChar(Master.DELETEDIR);
 			master_dos.flush();
 			master_oos.flush();
 			if (DEBUG_MASTER_CNX) System.out.println("REQUEST: delete dir " + src + dirname );
 			writeStringToMaster(src);
 			writeStringToMaster(dirname);
+			master_oos.flush();
 			v = FSReturnVals.valueOf(readStringFromMaster());
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
@@ -185,15 +182,13 @@ public class ClientFS {
 	 * "/Shahram/CSCI485" to "/Shahram/CSCI550"
 	 */
 	public FSReturnVals RenameDir(String src, String NewName) {
-		int length;
-		byte[] str;
 		FSReturnVals v;
 		if (master_s == null) {
 			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to delete dir " + src + NewName);
 			return null;
 		}
 		try{
-			master_dos.writeChar(Master.DELETEDIR);
+			master_dos.writeChar(Master.RENAMEDIR);
 			master_dos.flush();
 			master_oos.flush();
 			if (DEBUG_MASTER_CNX) System.out.println("REQUEST: delete dir " + src + NewName );
@@ -255,8 +250,6 @@ public class ClientFS {
 	 * Example usage: Createfile("/Shahram/CSCI485/Lecture1/", "Intro.pptx")
 	 */
 	public FSReturnVals CreateFile(String tgtdir, String filename) {
-		int length;
-		byte[] str;
 		FSReturnVals v;
 		if (master_s == null) {
 			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to create file " + tgtdir + filename);
@@ -298,7 +291,7 @@ public class ClientFS {
 			return null;
 		}
 		try{
-			master_dos.writeChar(Master.CREATEDIR);
+			master_dos.writeChar(Master.DELETEFILE);
 			master_dos.flush();
 			master_oos.flush();
 			if (DEBUG_MASTER_CNX) System.out.println("REQUEST: del dir " + tgtdir + filename );
@@ -325,8 +318,6 @@ public class ClientFS {
 	 * Example usage: OpenFile("/Shahram/CSCI485/Lecture1/Intro.pptx", FH1)
 	 */
 	public FSReturnVals OpenFile(String FilePath, FileHandle ofh) {
-		int length;
-		byte[] str;
 		FSReturnVals v;
 		if (master_s == null) {
 			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to open file " + FilePath + ofh.identifier);
@@ -358,19 +349,18 @@ public class ClientFS {
 	 * Example usage: CloseFile(FH1)
 	 */
 	public FSReturnVals CloseFile(FileHandle ofh) {
-		int length;
-		byte[] str;
 		FSReturnVals v;
 		if (master_s == null) {
 			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to close file " + ofh.identifier);
 			return null;
 		}
 		try{
-			master_dos.writeChar(Master.CREATEDIR);
+			master_dos.writeChar(Master.CLOSEFILE);
 			master_dos.flush();
 			master_oos.flush();
 			if (DEBUG_MASTER_CNX) System.out.println("REQUEST: close file" + ofh.identifier);
 			writeStringToMaster(ofh.identifier);
+			writeStringToMaster(ofh.fileDir);
 			v = FSReturnVals.valueOf(readStringFromMaster());
 		} catch (IOException ioe) {
 			ioe.printStackTrace();

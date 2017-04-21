@@ -71,12 +71,21 @@ public class Master {
 		}
 	}
 	
+	/**
+	 * @param source
+	 * @param subpath
+	 * @return
+	 */
 	private String getDirKey(String source, String subpath) {
 		if (subpath == "") return source + "/";
 		return source + subpath + "/";
 	}
 	
-	private String[] getDirSubdir(String path) {
+	/**
+	 * @param path
+	 * @return
+	 */
+	private String[] getDirSubdir (String path) {
 		String[] dir = new String[2];
 		String[] splitstr = path.split("/");
 		String parentdir = "";
@@ -362,13 +371,13 @@ public class Master {
 			String ans = "";
 			try {
 				length = dis.readInt(); //length of payload
-				if (DEBUG_SERVER) System.out.println("received len " + length);
+				//if (DEBUG_SERVER) System.out.println("received len " + length);
 				str = new byte[length];
 				for (int i = 0; i < length; i++) {
 					str[i] = dis.readByte();
 				}
 				ans = new String(str, Charset.forName("UTF-8"));
-				if (DEBUG_SERVER) System.out.println("response: [" + length + ": " + ans + "]");
+				//if (DEBUG_SERVER) System.out.println("response: [" + length + ": " + ans + "]");
 			} catch (IOException ioe){
 				ioe.printStackTrace();
 			}
@@ -403,6 +412,7 @@ public class Master {
 			while (true) {
 				try {
 					cmd = dis.readChar();
+					if (DEBUG_THREAD) System.out.println("received req:" + cmd);
 					switch(cmd){
 					case('1'): // CREATE DIR
 						String createdir_src = readStringFromClient();
@@ -413,22 +423,24 @@ public class Master {
 						break;
 					case('2'): // DELETE DIR
 						String deldir_src = readStringFromClient();
-						String deldir_source = readStringFromClient();
-						v = mas.createDir(deldir_src, deldir_source);
+						String deldir_dirname = readStringFromClient();
+						v = mas.deleteDir(deldir_src, deldir_dirname);
 						writeFSValsToClient(v);
-						if (DEBUG_THREAD) System.out.println("DELETEDIR " + deldir_src + deldir_source);
+						if (DEBUG_THREAD) System.out.println("DELETEDIR " + deldir_src + deldir_dirname + " " + v.toString());
 						break;
 					case('3'): // RENAME DIR
 						String rename_tgt = readStringFromClient();
 						String rename_newname = readStringFromClient();
 						v = mas.renameDir(rename_tgt, rename_newname);
 						writeFSValsToClient(v);
-						if (DEBUG_THREAD) System.out.println("RENAMEDIR " + rename_tgt + rename_newname);
+						if (DEBUG_THREAD) System.out.println("RENAMEDIR " + rename_tgt + rename_newname + " " + v.toString());
+						break;
 					case('4'): // LIST DIR
 						String list_tgt = readStringFromClient();
 						String[] list_dirs = mas.listDir(list_tgt);
 						length = list_dirs.length;
 						dos.writeInt(length);
+						dos.flush();
 						for (int listi = 0; listi < length; listi++){
 							writeStringToClient(list_dirs[listi]);
 						}
@@ -437,12 +449,34 @@ public class Master {
 					case('5'): // CREATE FILE
 						String createfile_tgtdir = readStringFromClient();
 						String createfile_filename = readStringFromClient();
-						v = mas.renameDir(createfile_tgtdir, createfile_filename);
+						v = mas.CreateFile(createfile_tgtdir, createfile_filename);
 						writeFSValsToClient(v);
 						if (DEBUG_THREAD) System.out.println("CREATEFILE " + createfile_tgtdir + createfile_filename);
+						break;
 					case('6'): // DELETE FILE
+						String deletefile_tgtdir = readStringFromClient();
+						String deletefile_filename = readStringFromClient();
+						v = mas.DeleteFile(deletefile_tgtdir, deletefile_filename);
+						writeFSValsToClient(v);
+						if (DEBUG_THREAD) System.out.println("DELETEFILE " + deletefile_tgtdir + deletefile_filename);
+						break;
 					case('7'): // OPEN FILE
+						String openfilepath = readStringFromClient();
+						String ofh_id = readStringFromClient();
+						String open_tgtdir = getDirSubdir(openfilepath)[0];
+						FileHandle fh = getFileHandle(openfilepath, file.get(open_tgtdir));
+						v = mas.OpenFile(openfilepath, fh);
+						writeFSValsToClient(v);
+						if (DEBUG_THREAD) System.out.println("OPENFILE " + ofh_id);
+						break;
 					case('8'): // CLOSE FILE
+						String cfh_id = readStringFromClient();
+						String close_tgtdir = readStringFromClient();
+						FileHandle cfh = getFileHandle(cfh_id, file.get(close_tgtdir));
+						v = mas.CloseFile(cfh);
+						writeFSValsToClient(v);
+						if (DEBUG_THREAD) System.out.println("CLOSEFILE " + cfh_id);
+						break;
 					default:
 						if (DEBUG_THREAD) System.out.println("received other request: [ " + cmd + " ]");
 						break;
