@@ -255,8 +255,30 @@ public class ClientFS {
 	 * Example usage: Createfile("/Shahram/CSCI485/Lecture1/", "Intro.pptx")
 	 */
 	public FSReturnVals CreateFile(String tgtdir, String filename) {
+		int length;
+		byte[] str;
+		FSReturnVals v;
+		if (master_s == null) {
+			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to create file " + tgtdir + filename);
+			return null;
+		}
+		try{
+			master_dos.writeChar(Master.CREATEFILE);
+			master_dos.flush();
+			master_oos.flush();
+			if (DEBUG_MASTER_CNX) System.out.println("REQUEST: create file " + tgtdir + filename );
+			writeStringToMaster(tgtdir);
+			writeStringToMaster(filename);
+			v = FSReturnVals.valueOf(readStringFromMaster());
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+			return null; //abort
+		}
+		
+		/*
 		FSReturnVals v = mas.CreateFile(tgtdir, filename);
 		if (DEBUG_DETAIL) System.out.println("createfile " + tgtdir + filename + " returns: " + v.toString());
+		*/
 		return v;
 	}
 
@@ -268,8 +290,30 @@ public class ClientFS {
 	 * Example usage: DeleteFile("/Shahram/CSCI485/Lecture1/", "Intro.pptx")
 	 */
 	public FSReturnVals DeleteFile(String tgtdir, String filename) {
+		int length;
+		byte[] str;
+		FSReturnVals v;
+		if (master_s == null) {
+			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to del dir " + tgtdir + filename);
+			return null;
+		}
+		try{
+			master_dos.writeChar(Master.CREATEDIR);
+			master_dos.flush();
+			master_oos.flush();
+			if (DEBUG_MASTER_CNX) System.out.println("REQUEST: del dir " + tgtdir + filename );
+			writeStringToMaster(tgtdir);
+			writeStringToMaster(filename);
+			v = FSReturnVals.valueOf(readStringFromMaster());
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+			return null; //abort
+		}
+		
+		/*
 		FSReturnVals v = mas.DeleteFile(tgtdir, filename);
 		if (DEBUG_DETAIL) System.out.println("deletefile " + tgtdir + filename + " returns: " + v.toString());
+		*/
 		return v;
 	}
 

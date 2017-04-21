@@ -33,14 +33,14 @@ public class Master {
 	Map<String, LinkedList<String> > path = new HashMap<String, LinkedList<String> >();
 	Map<String, LinkedList<FileHandle> > file = new HashMap<String, LinkedList<FileHandle> >();
 	
-	public static final char CREATEDIR = '1';
-	public static final char DELETEDIR = '2';
-	public static final char RENAMEDIR = '3';
-	public static final char LISTDIR = '4';
-	public static final char CREATEFILE = '5';
-	public static final char DELETEFILE = '6';
-	public static final char OPENFILE = '7';
-	public static final char CLOSEFILE = '8';
+	public static final char CREATEDIR	= '1';
+	public static final char DELETEDIR	= '2';
+	public static final char RENAMEDIR	= '3';
+	public static final char LISTDIR	= '4';
+	public static final char CREATEFILE	= '5';
+	public static final char DELETEFILE	= '6';
+	public static final char OPENFILE	= '7';
+	public static final char CLOSEFILE	= '8';
 	
 	public Master(){
 		path.put("/", new LinkedList<String>());
@@ -434,6 +434,10 @@ public class Master {
 						}
 						if (DEBUG_THREAD) System.out.println("LISTDIR " + list_tgt);
 						break;
+					case('5'): // CREATE FILE
+					case('6'): // DELETE FILE
+					case('7'): // OPEN FILE
+					case('8'): // CLOSE FILE
 					default:
 						if (DEBUG_THREAD) System.out.println("received other request: [ " + cmd + " ]");
 						break;
