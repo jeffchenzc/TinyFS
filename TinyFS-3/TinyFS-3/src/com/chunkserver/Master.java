@@ -20,7 +20,7 @@ import java.util.LinkedList;
 
 public class Master {
    
-	private static boolean DEBUG_SERVER = false;
+	private static boolean DEBUG_SERVER = true;
 	private static boolean DEBUG_RENAME = false;
 	private static boolean DEBUG_THREAD = true;
 	
@@ -256,10 +256,11 @@ public class Master {
 	public FSReturnVals CreateFile (String tgtdir, String filename) {
 		FileHandle fh = null;
 		//add stuff to filehandle
-		
+		System.out.println("\t\tfilename in CreateFile " + filename);
 		if (path.containsKey(tgtdir)){
 			//if tgtdir has files under it
 			if (file.containsKey(tgtdir)) {
+				
 				fh = getFileHandle(filename, file.get(tgtdir)); 
 				if (fh != null) {
 					return FSReturnVals.FileExists;
@@ -281,8 +282,9 @@ public class Master {
 	private void AddFHData (String tgtdir, String filename, FileHandle fh) {
 		fh.setFilename(filename);
 		fh.setFiledir(tgtdir);
-		fh.setFilepath(tgtdir+filename);
+		fh.setFilepath(tgtdir + filename);
 		fh.setOpen(false);
+		System.out.println("Set filehandle data: " + tgtdir + " " + filename);
 	}
 	
 	public FSReturnVals DeleteFile (String tgtdir, String filename) {
@@ -308,6 +310,7 @@ public class Master {
 		String tgtdir = parsefp[0];
 		String filename = parsefp[1];
 		
+		if (DEBUG_SERVER) System.out.println("OPENFILE: " + tgtdir + " " + filename + " " + ofh);
 		if (path.containsKey(tgtdir)){
 			//if tgtdir has files under it
 			if (file.containsKey(tgtdir)) {
@@ -350,16 +353,32 @@ public class Master {
 	}
 	
 	/*
-	 * Linearly searches the linkedList for a FileHandle whos filename
+	 * Linearly searches the linkedList for a FileHandle whose filename
 	 * matches the String file. Returns null if no match match, else
 	 * returns the FileHandle.
 	 */
 	private FileHandle getFileHandle(String file, LinkedList<FileHandle> linkedList) {
 		FileHandle fh = null;
+		//System.out.println(">\t" + file);
+		System.out.println("\t\tfile is " + file);
+		if(linkedList.isEmpty()){
+			System.out.println("\t\tlinkedlist is empty");
+		}
+		System.out.println("\t\t1st element in linkedlist is " + linkedList.getFirst().getFilename());
 		for (int i = 0; i < linkedList.size(); i++) {
 			fh = linkedList.get(i);
-			//System.out.println(">\t[" + i + "] " + fh.getFilepath());
-			if (fh.getFilename().equals(file)) return fh; /*TODO FileHandle.filename*/
+			//System.out.println(">\t[" + i + "] " + fh.getFilename());
+			if(file.contains("/")){
+				String[] temp = file.split("/");
+				String real_name = temp[temp.length - 1];
+				if(fh.getFilename().equals(real_name)){
+					return fh;
+				}
+			}else{
+				if (fh.getFilename().equals(file)){ 
+					System.out.println("\t\t HIT!!!!");
+					return fh; /*TODO FileHandle.filename*/}
+			}
 		}
 		return null;
 	}
@@ -460,10 +479,11 @@ public class Master {
 			
 			// if server, store fileID, IP and port.
 			try {
-				dos.writeChar(Master.IS_CLIENT);
-				dos.flush();
+				//dos.writeChar(Master.IS_CLIENT);
+				//dos.flush();
 				char type = dis.readChar();
 				if (type == Master.IS_SERVER) {
+					if (DEBUG_SERVER) System.out.println("Master connected to a server! Get port and host");
 					CNX_SERVER = true;
 					dos.writeChar(Master.GET_SERVER_INFO);
 					dos.flush();
@@ -480,13 +500,14 @@ public class Master {
 					}
 				} else {
 					CNX_SERVER = false;
+					if (DEBUG_SERVER) System.out.println("Master connected to a client! Continue as normal.");
 				}
 			} catch (IOException ioe) {
 				ioe.printStackTrace();
 			}
 			
 			// wait for commands
-			char cmd = 0;
+			int cmd = 0;
 			String tgtdir = "";
 			while (true) {
 				try {
@@ -505,7 +526,7 @@ public class Master {
 						String createdir_source = readStringFromClient();
 						v = mas.createDir(createdir_src, createdir_source);
 						writeFSValsToClient(v);
-						if (DEBUG_THREAD) System.out.println("CREATEDIR " + createdir_src + createdir_source);
+						if (DEBUG_THREAD) System.out.println("CREATEDIR " + createdir_src + " " + createdir_source + " " + v.toString());
 						break;
 					case('2'): // DELETE DIR
 						String deldir_src = readStringFromClient();
@@ -537,7 +558,7 @@ public class Master {
 						String createfile_filename = readStringFromClient();
 						v = mas.CreateFile(createfile_tgtdir, createfile_filename);
 						writeFSValsToClient(v);
-						if (DEBUG_THREAD) System.out.println("CREATEFILE " + createfile_tgtdir + createfile_filename);
+						if (DEBUG_THREAD) System.out.println("CREATEFILE " + createfile_tgtdir + " " + createfile_filename);
 						break;
 					case('6'): // DELETE FILE
 						String deletefile_tgtdir = readStringFromClient();
@@ -548,16 +569,22 @@ public class Master {
 						break;
 					case('7'): // OPEN FILE
 						String openfilepath = readStringFromClient();
-						String ofh_id = readStringFromClient();
 						String open_tgtdir = getDirSubdir(openfilepath)[0];
+						//System.out.println("\topenfilepath is  "+openfilepath);
 						FileHandle fh = getFileHandle(openfilepath, file.get(open_tgtdir));
+						writeStringToClient(fh.getFilename());
+						writeStringToClient(fh.getFilepath());
+						writeStringToClient(fh.getFiledir());
+						if(fh == null){
+							//System.out.println("\t\tfh is NULLLLLLLLLLLLLLL");
+						}
 						v = mas.OpenFile(openfilepath, fh);
 						writeFSValsToClient(v);
-						if (DEBUG_THREAD) System.out.println("OPENFILE " + ofh_id);
+						if (DEBUG_THREAD) System.out.println("OPENFILE " + open_tgtdir + " " + openfilepath);
 						break;
 					case('8'): // CLOSE FILE
-						String cfh_id = readStringFromClient();
-						String close_tgtdir = readStringFromClient();
+						String cfh_id = getDirKey(readStringFromClient(),"");
+						String close_tgtdir = readStringFromClient(); //getDirSubdir(cfh_id)[0];
 						FileHandle cfh = getFileHandle(cfh_id, file.get(close_tgtdir));
 						v = mas.CloseFile(cfh);
 						writeFSValsToClient(v);

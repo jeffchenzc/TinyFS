@@ -14,7 +14,7 @@ import com.chunkserver.*;
 public class ClientFS {
 	
 	private static final boolean DEBUG_DETAIL = false;
-	private static final boolean DEBUG_MASTER_CNX = false;
+	private static final boolean DEBUG_MASTER_CNX = true;
 	
 	Master mas = new Master();
 
@@ -58,6 +58,13 @@ public class ClientFS {
 			master_ois = new ObjectInputStream(master_s.getInputStream());
 			master_dos = new DataOutputStream(master_oos);
 			master_dis = new DataInputStream(master_ois);
+			
+			//char cmd = master_dis.readChar();
+			//if (cmd == Master.IS_SERVER) {
+				if (DEBUG_MASTER_CNX) System.out.println("writeChar " + Master.IS_SERVER);
+				master_dos.writeChar(Master.IS_CLIENT);
+				master_dos.flush();
+			//}
 		} catch (IOException ioe) {
 			System.out.println("Connection refused: " + host + ":" + port);
 			try {
@@ -66,6 +73,7 @@ public class ClientFS {
 				System.out.println("IOE when closing connection to " + host + ":" + port);
 			}
 		}
+		if (DEBUG_MASTER_CNX) System.out.println("finish creating clientFS");
 	}
 
 	/**
@@ -318,18 +326,24 @@ public class ClientFS {
 	 * Example usage: OpenFile("/Shahram/CSCI485/Lecture1/Intro.pptx", FH1)
 	 */
 	public FSReturnVals OpenFile(String FilePath, FileHandle ofh) {
+		System.out.println("FilePath in openfile is " + FilePath);
 		FSReturnVals v;
 		if (master_s == null) {
-			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to open file " + FilePath + ofh.identifier);
+			if (DEBUG_MASTER_CNX) System.out.println("socket is null; fail to open file " + FilePath);
 			return null;
 		}
 		try{
 			master_dos.writeChar(Master.OPENFILE);
 			master_dos.flush();
 			master_oos.flush();
-			if (DEBUG_MASTER_CNX) System.out.println("REQUEST: del dir " + FilePath + ofh.identifier);
+			if (DEBUG_MASTER_CNX) System.out.println("REQUEST: open dir " + FilePath);
 			writeStringToMaster(FilePath);
-			writeStringToMaster(ofh.identifier);
+			String name = readStringFromMaster();
+			String path = readStringFromMaster();
+			String dir = readStringFromMaster();
+			ofh.setFilename(name);
+			ofh.setFilepath(path);
+			ofh.setFiledir(dir);
 			v = FSReturnVals.valueOf(readStringFromMaster());
 		} catch (IOException ioe) {
 			ioe.printStackTrace();

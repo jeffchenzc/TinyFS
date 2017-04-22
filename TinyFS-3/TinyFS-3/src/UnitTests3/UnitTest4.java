@@ -37,6 +37,7 @@ public class UnitTest4 {
 		//get the file handle first
 		FileHandle fh = new FileHandle();
 		FSReturnVals ofd = cfs.OpenFile("/" + dir1 + "/emp", fh);
+		System.out.println("\t\tIs fh at line 40 at test 4 null?" + fh.fileName);
 		byte[] payload = null;
 		int intSize = Integer.SIZE / Byte.SIZE;	// 4 bytes
 		ClientRec crec = new ClientRec();

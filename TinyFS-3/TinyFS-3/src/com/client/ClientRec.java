@@ -33,6 +33,7 @@ public class ClientRec {
 
 	private static String master_host = "localhost";
 	private static int master_port = 8888;
+	
 	//private static String cs_host = "localhost";
 	//private static int cs_port = 9999;
 	private static int int_size = Integer.SIZE/Byte.SIZE;
@@ -154,12 +155,12 @@ public class ClientRec {
 	 * Example usage: AppendRecord(FH1, obama, RecID1)
 	 */
 	public FSReturnVals AppendRecord(FileHandle ofh, byte[] payload, RID RecordID) {
-		FSReturnVals v;
+		FSReturnVals v = null;
 		getServerInfo(ofh);
 		try {
 			cs_dos.writeChar(ChunkServer.APPENDRECORD);
 			cs_dos.flush();
-			writeStringToServer(ofh);
+			writeStringToServer(ofh.identifier);
 			cs_dos.writeInt(payload.length);
 			cs_dos.write(payload, 0, payload.length);
 			writeRID(RecordID);
@@ -191,13 +192,14 @@ public class ClientRec {
 		try{
 			cs_dos.writeChar(ChunkServer.DELETERECORD);
 			cs_dos.flush();
-			writeStringToServer(ofh);
+			writeStringToServer(ofh.identifier);
 			writeRID(RecordID);
 			v = FSReturnVals.valueOf(readStringFromServer());
 			return v;
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
 		}
+		return null;
 	}
 
 	/**
@@ -210,7 +212,7 @@ public class ClientRec {
 	public FSReturnVals ReadFirstRecord(FileHandle ofh, TinyRec rec){
 		FSReturnVals v;
 		getServerInfo(ofh);
-		writeStringToServer(ofh);
+		writeStringToServer(ofh.identifier);
 		rec = readRec();
 		v = FSReturnVals.valueOf(readStringFromServer());
 		return v;
@@ -225,7 +227,7 @@ public class ClientRec {
 	public FSReturnVals ReadLastRecord(FileHandle ofh, TinyRec rec){
 		FSReturnVals v;
 		getServerInfo(ofh);
-		writeStringToServer(ofh);
+		writeStringToServer(ofh.identifier);
 		rec = readRec();
 		v = FSReturnVals.valueOf(readStringFromServer());
 		return v;
@@ -242,7 +244,7 @@ public class ClientRec {
 	public FSReturnVals ReadNextRecord(FileHandle ofh, RID pivot, TinyRec rec){
 		FSReturnVals v;
 		getServerInfo(ofh);
-		writeStringToServer(ofh);
+		writeStringToServer(ofh.identifier);
 		writeRID(pivot);
 		rec = readRec();
 		v = FSReturnVals.valueOf(readStringFromServer());
@@ -265,7 +267,7 @@ public class ClientRec {
 	public FSReturnVals ReadPrevRecord(FileHandle ofh, RID pivot, TinyRec rec){
 		FSReturnVals v;
 		getServerInfo(ofh);
-		writeStringToServer(ofh);
+		writeStringToServer(ofh.identifier);
 		writeRID(pivot);
 		rec = readRec();
 		v = FSReturnVals.valueOf(readStringFromServer());
