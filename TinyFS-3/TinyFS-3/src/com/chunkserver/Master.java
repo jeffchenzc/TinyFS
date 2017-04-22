@@ -32,6 +32,7 @@ public class Master {
 	
 	Map<String, LinkedList<String> > path = new HashMap<String, LinkedList<String> >();
 	Map<String, LinkedList<FileHandle> > file = new HashMap<String, LinkedList<FileHandle> >();
+	Map<String, String[]> servers = new HashMap<String, String[]>();
 	
 	public static final char CREATEDIR	= '1';
 	public static final char DELETEDIR	= '2';
@@ -41,6 +42,10 @@ public class Master {
 	public static final char DELETEFILE	= '6';
 	public static final char OPENFILE	= '7';
 	public static final char CLOSEFILE	= '8';
+	public static final char GETSERVERFORFH = '9';
+	public static final char IS_SERVER = 'A';
+	public static final char IS_CLIENT = 'B';
+	public static final char GET_SERVER_INFO = 'C';
 	
 	public Master(){
 		path.put("/", new LinkedList<String>());
@@ -404,16 +409,43 @@ public class Master {
 			writeStringToClient(v.toString());
 		}
 		
+		private String[] getServerForFH(String get_fh){
+			String[] server_info = new String[2];
+			//TODO read from Master.servers
+			return server_info;
+		}
+		
 		public void run() {
 			FSReturnVals v;
 			int length;
 			if(ss == null || s == null) return;
+			
+			// if server, store fileID, IP and port.
+			try {
+				dos.writeChar(Master.IS_CLIENT);
+				dos.flush();
+				char type = dis.readChar();
+				if (type == Master.IS_SERVER) {
+					dos.writeChar(Master.GET_SERVER_INFO);
+					dos.flush();
+					
+					// or just get the server and filenames.
+					// for each filename received, add pair (filename, server) to servers
+				}
+			}
+			
+			// wait for commands
 			char cmd = 0;
 			while (true) {
 				try {
 					cmd = dis.readChar();
 					if (DEBUG_THREAD) System.out.println("received req:" + cmd);
 					switch(cmd){
+					case('9'): // GET SERVER FOR FILEHANDLE
+						String filehandleID = readStringFromClient();
+						String get_tgtdir = getDirSubdir(filehandleID)[0];
+						FileHandle get_fh = getFileHandle(filehandleID, file.get(get_tgtdir));
+						String [] server_info = getServerForFH(get_fh);
 					case('1'): // CREATE DIR
 						String createdir_src = readStringFromClient();
 						String createdir_source = readStringFromClient();

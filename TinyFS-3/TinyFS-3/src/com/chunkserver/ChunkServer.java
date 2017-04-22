@@ -14,6 +14,7 @@ import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 //import java.util.Arrays;
 import java.util.LinkedList;
@@ -518,6 +519,7 @@ public class ChunkServer {
 
 	private class ChunkServerThread extends Thread{
 		public static final boolean DEBUG_THREAD = true;
+		private boolean CNX_MASTER = false; //false if CNX_CLIENT
 		
 		private ChunkServer cs;
 		private Socket s;
@@ -534,15 +536,71 @@ public class ChunkServer {
 				ois = new ObjectInputStream(s.getInputStream());
 				dos = new DataOutputStream(oos);
 				dis = new DataInputStream(ois);
+				this.start();
 			} catch (IOException ioe) {
 				System.out.println("error while creating chunkserverthread");
 				ioe.printStackTrace();
 			}
 		}
 		
+		/**
+		 * @return String that was read in from Master
+		 * reads an int [length], then reads [length] number of bytes from Master's socket
+		 */
+		private String readStringFromConnection(){
+			int length;
+			byte[] str;
+			String ans = "";
+			try {
+				length = dis.readInt(); //length of payload
+				str = new byte[length];
+				for (int i = 0; i < length; i++) {
+					str[i] = dis.readByte();
+				}
+				ans = new String(str, Charset.forName("UTF-8"));
+			} catch (IOException ioe){
+				ioe.printStackTrace();
+			}
+			return ans;
+		}
+		
+		private void writeStringToConnection(String payload) {
+			int payload_length;
+			byte[] payload_bytes = payload.getBytes(Charset.forName("UTF-8"));
+			
+			payload_length = payload_bytes.length;
+			
+			try{
+				dos.writeInt(payload_length);
+				dos.write(payload_bytes, 0, payload_length);
+				dos.flush();
+				oos.flush();
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+			}
+		}
+		
+		public boolean isConnectedtoMaster() { return CNX_MASTER; }
+		public boolean isConnectedtoClient() { return !CNX_MASTER; }
+		
 		public void run() {
 			if(ss == null || s == null) return;
 			char cmd = 0;
+			
+			// connect to master
+			try {
+				cmd = dis.readChar();
+				if (cmd == Master.IS_SERVER) {
+					// send the chunkserver info
+					dos.writeInt(cs.port);
+					writeStringToConnection(cs.host);
+					// send the files TODO
+					CNX_MASTER = true;
+				} else {
+					CNX_MASTER = false;
+				}
+			
+			cmd = 0;
 			while (true) {
 				try {
 					cmd = dis.readChar();

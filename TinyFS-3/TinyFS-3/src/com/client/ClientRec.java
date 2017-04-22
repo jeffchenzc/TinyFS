@@ -11,6 +11,7 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
+import com.chunkserver.Master;
 import com.client.ClientFS.FSReturnVals;
 
 public class ClientRec {
@@ -66,6 +67,17 @@ public class ClientRec {
 			} catch (IOException ioe2) {
 				System.out.println("IOE when closing connection to " + cs_host + ":" + cs_port);
 			}
+		}
+	}
+	
+	private String[] getChunkServerFromMaster(FileHandle ofh) {
+		String[] server_info = new String[2];
+		String filehandle = ofh.identifier;
+		try {
+			master_dos.writeChar(Master.GETSERVERFORFH);
+			master_dos.writeInt(filehandle.length());
+			master_dos.writeBytes(filehandle);
+			master_dos.flush();
 		}
 	}
 	
