@@ -32,7 +32,7 @@ public class Master {
 	
 	Map<String, LinkedList<String> > path = new HashMap<String, LinkedList<String> >();
 	Map<String, LinkedList<FileHandle> > file = new HashMap<String, LinkedList<FileHandle> >();
-	Map<String, String[]> servers = new HashMap<String, String[]>();
+	Map<String, ServerInfo> servers = new HashMap<String, ServerInfo>();
 	
 	public static final char CREATEDIR	= '1';
 	public static final char DELETEDIR	= '2';
@@ -46,6 +46,18 @@ public class Master {
 	public static final char IS_SERVER = 'A';
 	public static final char IS_CLIENT = 'B';
 	public static final char GET_SERVER_INFO = 'C';
+	public static final char CREATECHUNK = 'D';
+	
+	public ServerInfo getServerInfo() {
+		boolean isServer = false;
+		for (int i = 0; i < threads.size(); i++) {
+			isServer = threads.get(i).isConnectedToServer();
+			if (isServer) {
+				return threads.get(i).getConnectionInfo();
+			}
+		}
+		return null;
+	}
 	
 	public Master(){
 		path.put("/", new LinkedList<String>());
@@ -73,6 +85,15 @@ public class Master {
 				try { ss.close(); }
 				catch (IOException ioe) { if (DEBUG_SERVER)System.out.println("Exception while closing server"); }
 			}
+		}
+	}
+	
+	public static class ServerInfo {
+		public String host;
+		public int port;
+		public ServerInfo(String host, int port) {	
+			this.host = host;
+			this.port = port;
 		}
 	}
 	
@@ -351,6 +372,17 @@ public class Master {
 		private DataInputStream dis;
 		private DataOutputStream dos;
 		
+		public boolean CNX_SERVER = false;
+		public ServerInfo cnx_info = null;
+		
+		public boolean isConnectedToServer() { return CNX_SERVER; }
+		public boolean isConnectedToClient() { return !CNX_SERVER; }
+		
+		/**
+		 * @return null if ServerInfo not received yet or if this thread is connected to a Client
+		 */
+		public ServerInfo getConnectionInfo() { return cnx_info; }
+		
 		/**
 		 * @param s (Socket)
 		 * @param master (ChunkServer)
@@ -409,15 +441,21 @@ public class Master {
 			writeStringToClient(v.toString());
 		}
 		
-		private String[] getServerForFH(String get_fh){
-			String[] server_info = new String[2];
-			//TODO read from Master.servers
+		private ServerInfo getServerForFH(String get_fh){
+			ServerInfo server_info;
+			// there's only one server right now, so return the first thread that's a server.
+			server_info = mas.getServerInfo();
 			return server_info;
 		}
 		
 		public void run() {
 			FSReturnVals v;
 			int length;
+			
+			int cs_port, cs_num_files;
+			String cs_host, cs_filename = "";
+			ServerInfo cs_info;
+			
 			if(ss == null || s == null) return;
 			
 			// if server, store fileID, IP and port.
@@ -426,16 +464,30 @@ public class Master {
 				dos.flush();
 				char type = dis.readChar();
 				if (type == Master.IS_SERVER) {
+					CNX_SERVER = true;
 					dos.writeChar(Master.GET_SERVER_INFO);
 					dos.flush();
-					
-					// or just get the server and filenames.
+					// get server info
+					cs_port = dis.readInt();
+					cs_host = readStringFromClient();
+					cs_info = new ServerInfo(cs_host, cs_port);
+					cnx_info = cs_info;
 					// for each filename received, add pair (filename, server) to servers
+					cs_num_files = dis.readInt();
+					for (int i = 0; i < cs_num_files; i++) {
+						cs_filename = readStringFromClient();
+						servers.put(cs_filename, cs_info);
+					}
+				} else {
+					CNX_SERVER = false;
 				}
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
 			}
 			
 			// wait for commands
 			char cmd = 0;
+			String tgtdir = "";
 			while (true) {
 				try {
 					cmd = dis.readChar();
@@ -445,7 +497,9 @@ public class Master {
 						String filehandleID = readStringFromClient();
 						String get_tgtdir = getDirSubdir(filehandleID)[0];
 						FileHandle get_fh = getFileHandle(filehandleID, file.get(get_tgtdir));
-						String [] server_info = getServerForFH(get_fh);
+						ServerInfo server_info = getServerForFH(get_fh.identifier);
+						dos.writeInt(server_info.port);
+						writeStringToClient(server_info.host);
 					case('1'): // CREATE DIR
 						String createdir_src = readStringFromClient();
 						String createdir_source = readStringFromClient();
@@ -509,6 +563,12 @@ public class Master {
 						writeFSValsToClient(v);
 						if (DEBUG_THREAD) System.out.println("CLOSEFILE " + cfh_id);
 						break;
+					case('D'): // CREATE CHUNK
+						String createchunk_name = readStringFromClient();
+						String createchunk_ofh_id = readStringFromClient();
+						tgtdir = getDirSubdir(createchunk_ofh_id)[0];
+						FileHandle createchunk_fh = getFileHandle(createchunk_ofh_id, file.get(tgtdir));
+						createchunk_fh.chunks.add(createchunk_name);
 					default:
 						if (DEBUG_THREAD) System.out.println("received other request: [ " + cmd + " ]");
 						break;

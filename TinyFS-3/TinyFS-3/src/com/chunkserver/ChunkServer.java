@@ -25,6 +25,7 @@ import com.client.FileHandle;
 import com.client.RID;
 import com.client.TinyRec;
 import com.client.ClientFS.FSReturnVals;
+import com.client.ClientRec;
 import com.interfaces.ChunkServerInterface;
 
 /**
@@ -50,15 +51,29 @@ public class ChunkServer {
 	public static final char READNEXTRECORD 	= '5';
 	public static final char READPREVRECORD 	= '6';
 	
-	private Socket s;
+	private Socket s, master_s;
 	private ServerSocket ss;
+	
+	private ChunkServerThread master_cnx;
+	private static String master_host = "localhost";
+	private static int master_port = 8888;
 	
 	private Vector<ChunkServerThread> threads;
 	private static String host = "localhost";
 	private static int port = 9999;
 	private static int int_size = Integer.SIZE/Byte.SIZE;
+	private static String filePath = "chunkserver";
 	
 	public ChunkServer(){
+		
+		//connect to master
+		try {
+			master_s = new Socket(master_host, master_port);
+			master_cnx = new ChunkServerThread(master_s, this);
+		} catch (IOException ioe) {
+			//try to connect to master several more times
+			ioe.printStackTrace();
+		}
 		
 		//start serversocket
 		threads = new Vector<ChunkServerThread>();
@@ -85,12 +100,19 @@ public class ChunkServer {
 			}
 		}
 	}
+	
+	private void createNewChunk(String new_chunk_name, String ofh){
+		master_cnx.createNewChunk(new_chunk_name, ofh);
+	}
 
 	private FSReturnVals AppendRecordToNewChunk(FileHandle ofh, byte[] payload, RID RecordID) {
 		if (DEBUG_SEEK) System.out.println(">\t Append to new chunk");
 		RandomAccessFile raf = null;
-		String new_chunk_name = ofh.fileName + "_chunk_" + ofh.chunks.size();
-		ofh.chunks.add(new_chunk_name);
+		{
+			String new_chunk_name = filePath + "/" + ofh.fileName + "_chunk_" + ofh.chunks.size();
+			ofh.chunks.add(new_chunk_name);
+		}
+		createNewChunk(new_chunk_name, ofh.identifier);
 		try {
 			raf = new RandomAccessFile(new_chunk_name,"rw");
 			raf.setLength((long) MAX_CHUNK_SIZE);
@@ -148,7 +170,7 @@ public class ChunkServer {
 		if (DEBUG_SEEK) System.out.println(">\t max pointers: " + max_pointer);
 		byte[] last_offset = new byte[4];
 		try {
-			raf = new RandomAccessFile(ofh.chunks.getLast(),"rw");
+			raf = new RandomAccessFile(filePath + "/" + ofh.chunks.getLast(),"rw");
 			raf.seek(MAX_CHUNK_SIZE - 4*(max_pointer));
 			raf.read(last_offset, 0, 4);
 		} catch (FileNotFoundException e) {
@@ -198,7 +220,7 @@ public class ChunkServer {
 		String chunk = RecordID.chunkName;
 		RandomAccessFile raf = null;
 		try {
-			raf = new RandomAccessFile(chunk, "rw");
+			raf = new RandomAccessFile(filePath + "/" + chunk, "rw");
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -264,7 +286,7 @@ public class ChunkServer {
 	private int max_pointer(String chunk){
 		RandomAccessFile raf = null;
 		try {
-			raf = new RandomAccessFile(chunk, "r");
+			raf = new RandomAccessFile(filePath + "/" + chunk, "r");
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -319,7 +341,7 @@ public class ChunkServer {
 		byte[] data = new byte[length_payload];
 		RandomAccessFile raf = null;
 		try {
-			raf = new RandomAccessFile(chunk, "r");
+			raf = new RandomAccessFile(filePath + "/" + chunk, "r");
 		} catch (FileNotFoundException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -412,7 +434,7 @@ public class ChunkServer {
 	private int getNextPointer(int current_index, String chunk, int max_pointers, boolean readPrev){
 		RandomAccessFile raf = null;
 		try {
-			raf = new RandomAccessFile(chunk, "r");
+			raf = new RandomAccessFile(filePath + "/" + chunk, "r");
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -500,7 +522,6 @@ public class ChunkServer {
 		int status = -1;
 		
 		String chunk = pivot.chunkName;
-		int max_pointer = max_pointer(chunk);
 		
 		if (pivot.pointer_index == MAX_CHUNK_SIZE-4) {
 			// read first item in next chunk
@@ -547,7 +568,7 @@ public class ChunkServer {
 		 * @return String that was read in from Master
 		 * reads an int [length], then reads [length] number of bytes from Master's socket
 		 */
-		private String readStringFromConnection(){
+		public String readStringFromConnection(){
 			int length;
 			byte[] str;
 			String ans = "";
@@ -564,7 +585,7 @@ public class ChunkServer {
 			return ans;
 		}
 		
-		private void writeStringToConnection(String payload) {
+		public void writeStringToConnection(String payload) {
 			int payload_length;
 			byte[] payload_bytes = payload.getBytes(Charset.forName("UTF-8"));
 			
@@ -583,24 +604,91 @@ public class ChunkServer {
 		public boolean isConnectedtoMaster() { return CNX_MASTER; }
 		public boolean isConnectedtoClient() { return !CNX_MASTER; }
 		
+		public void createNewChunk(String new_chunk_name, String ofh_id) {
+			if (!CNX_MASTER) return;
+			try{
+				dos.writeChar(Master.CREATECHUNK);
+				dos.flush();
+				writeStringToConnection(new_chunk_name);
+				writeStringToConnection(ofh_id);
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+			}
+		}
+		
+		private RID readRID() {
+			RID rid = new RID();
+			try{
+				rid.chunkName = readStringFromConnection();
+				rid.offst = dis.readInt();
+				rid.pointer_index = dis.readInt();
+				rid.size = dis.readInt();
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+			}
+			return rid;
+		}
+		
+		public void writeRID(RID rid) {
+			try{
+				writeStringToConnection(rid.chunkName);
+				dos.writeInt(rid.offst);
+				dos.writeInt(rid.pointer_index);
+				dos.writeInt(rid.size);
+				dos.flush();
+				oos.flush();
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+			}
+		}
+		
+		public void writeRec(TinyRec rec) {
+			try{
+				dos.writeInt(rec.getPayload().length);
+				dos.write(rec.getPayload(), 0, rec.getPayload().length);
+				writeRID(rec.getRID());
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+			}
+		}
+		
 		public void run() {
 			if(ss == null || s == null) return;
 			char cmd = 0;
+			
+			File dir = new File(ChunkServer.filePath);
+			File[] fs = dir.listFiles();
 			
 			// connect to master
 			try {
 				cmd = dis.readChar();
 				if (cmd == Master.IS_SERVER) {
-					// send the chunkserver info
-					dos.writeInt(cs.port);
-					writeStringToConnection(cs.host);
-					// send the files TODO
 					CNX_MASTER = true;
+					// send the chunkserver info
+					dos.writeInt(ChunkServer.port);
+					dos.flush();
+					oos.flush();
+					writeStringToConnection(ChunkServer.host);
+					// send the files
+					dos.writeInt(fs.length);
+					dos.flush();
+					oos.flush();
+					for (int i = 0; i < fs.length; i++) {
+						writeStringToConnection(fs[i].toString());
+					}
 				} else {
 					CNX_MASTER = false;
 				}
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+			}
 			
 			cmd = 0;
+			FileHandle ofh;
+			RID rid;
+			FSReturnVals v;
+			TinyRec rec;
+			int bytes_length;
 			while (true) {
 				try {
 					cmd = dis.readChar();
@@ -608,21 +696,54 @@ public class ChunkServer {
 					switch(cmd){
 					case('1'): // APPEND RECORD
 						if (DEBUG_THREAD) System.out.println("APPENDRECORD: " + cmd);
+						ofh = readStringFromServer(); // TODO
+						bytes_length = dis.readInt();
+						byte[] append_payload = new byte[0];
+						dis.read(append_payload, 0, bytes_length);
+						rid = readRID();
+						v = AppendRecord(ofh, append_payload, rid);
+						writeStringToConnection(v.toString());
 						break;
 					case('2'): // DELETE RECORD
 						if (DEBUG_THREAD) System.out.println("DELETERECORD: " + cmd);
+						ofh = readStringFromServer(); // TODO
+						rid = readRID();
+						v = DeleteRecord(ofh, rid);
+						writeStringToConnection(v.toString());
 						break;
 					case('3'): // READ FIRST RECORD
 						if (DEBUG_THREAD) System.out.println("READFIRSTRECORD: " + cmd);
+						ofh = readStringFromServer();
+						rec = new TinyRec();
+						v = ReadFirstRecord(ofh, rec);
+						writeRec(rec);
+						writeStringToConnection(v.toString());
 						break;
 					case('4'): // READ LAST RECORD
 						if (DEBUG_THREAD) System.out.println("READLASTRECORD: " + cmd);
+						ofh = readStringFromServer();
+						rec = new TinyRec();
+						v = ReadLastRecord(ofh, rec);
+						writeRec(rec);
+						writeStringToConnection(v.toString());
 						break;
 					case('5'): // READ NEXT RECORD
 						if (DEBUG_THREAD) System.out.println("READNEXTRECORD: " + cmd);
+						ofh = readStringFromServer();
+						rid = readRID();
+						rec = new TinyRec();
+						v = ReadNextRecord(ofh, rid, rec);
+						writeRec(rec);
+						writeStringToConnection(v.toString());
 						break;
 					case('6'): // READ PREV RECORD
 						if (DEBUG_THREAD) System.out.println("READPREVRECORD: " + cmd);
+						ofh = readStringFromServer();
+						rid = readRID();
+						rec = new TinyRec();
+						v = ReadPrevRecord(ofh, rid, rec);
+						writeRec(rec);
+						writeStringToConnection(v.toString());
 						break;
 					default:
 						if (DEBUG_THREAD) System.out.println("received other request: [ " + cmd + " ]");
@@ -639,8 +760,8 @@ public class ChunkServer {
 				}
 			} /*endwhile*/
 		}
-	}
-	
+	}	
+		
 	public static void main(String args[])
 	{
 	}
