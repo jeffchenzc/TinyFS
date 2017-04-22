@@ -507,7 +507,7 @@ public class Master {
 			}
 			
 			// wait for commands
-			int cmd = 0;
+			char cmd = 0;
 			String tgtdir = "";
 			while (true) {
 				try {
